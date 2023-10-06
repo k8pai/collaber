@@ -1,10 +1,10 @@
 import { GetServerSidePropsContext } from "next";
 import {
-  DocumentUser,
-  FetchApiResult,
-  GetDocumentUsersProps,
+    DocumentUser,
+    FetchApiResult,
+    GetDocumentUsersProps,
 } from "../../../types";
-import { getServerSession } from "../auth";
+import { getSession } from "../auth";
 import { getRoom } from "../liveblocks";
 import { buildDocumentUsers } from "../utils";
 
@@ -16,37 +16,37 @@ import { buildDocumentUsers } from "../utils";
  * @param documentId - The document's id
  */
 export async function getDocumentUsers(
-  req: GetServerSidePropsContext["req"],
-  res: GetServerSidePropsContext["res"],
-  { documentId }: GetDocumentUsersProps
+    req: GetServerSidePropsContext["req"],
+    res: GetServerSidePropsContext["res"],
+    { documentId }: GetDocumentUsersProps
 ): Promise<FetchApiResult<DocumentUser[]>> {
-  // Get session and room
-  const [session, room] = await Promise.all([
-    getServerSession(req, res),
-    getRoom({ roomId: documentId }),
-  ]);
+    // Get session and room
+    const [session, room] = await Promise.all([
+        getSession(req, res),
+        getRoom({ roomId: documentId }),
+    ]);
 
-  // Get the room from documentId
-  const { data, error } = room;
+    // Get the room from documentId
+    const { data, error } = room;
 
-  if (error) {
-    return { error };
-  }
+    if (error) {
+        return { error };
+    }
 
-  if (!data) {
-    return {
-      error: {
-        code: 404,
-        message: "Room not found",
-        suggestion: "Check that you're on the correct page",
-      },
-    };
-  }
+    if (!data) {
+        return {
+            error: {
+                code: 404,
+                message: "Room not found",
+                suggestion: "Check that you're on the correct page",
+            },
+        };
+    }
 
-  // If successful, convert room to a list of collaborators and send
-  const result: DocumentUser[] = await buildDocumentUsers(
-    data,
-    session?.user.info.id ?? ""
-  );
-  return { data: result };
+    // If successful, convert room to a list of collaborators and send
+    const result: DocumentUser[] = await buildDocumentUsers(
+        data,
+        session?.user.info.id ?? ""
+    );
+    return { data: result };
 }

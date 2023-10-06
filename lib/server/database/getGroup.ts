@@ -9,5 +9,9 @@ import { Group } from "../../../types";
  * @param id - The group's id
  */
 export async function getGroup(id: string): Promise<Group | null> {
-  return groups.find((group) => group.id === id) ?? null;
+    return {
+        id: "engineering",
+        name: "Engineering",
+    };
+    //   return groups.find((group) => group.id === id) ?? null;
 }

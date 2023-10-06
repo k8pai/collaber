@@ -1,10 +1,10 @@
 import { GetServerSidePropsContext } from "next";
 import {
-  FetchApiResult,
-  GetLiveUsersProps,
-  LiveUsersResponse,
+    FetchApiResult,
+    GetLiveUsersProps,
+    LiveUsersResponse,
 } from "../../../types";
-import { getServerSession } from "../auth";
+import { getSession } from "../auth";
 import { getActiveUsersInRooms } from "../liveblocks";
 
 /**
@@ -17,39 +17,39 @@ import { getActiveUsersInRooms } from "../liveblocks";
  * @param documentIds - A list of document ids to select
  */
 export async function getLiveUsers(
-  req: GetServerSidePropsContext["req"],
-  res: GetServerSidePropsContext["res"],
-  { documentIds }: GetLiveUsersProps
+    req: GetServerSidePropsContext["req"],
+    res: GetServerSidePropsContext["res"],
+    { documentIds }: GetLiveUsersProps
 ): Promise<FetchApiResult<LiveUsersResponse[]>> {
-  // Get session and active users
-  const [session, activeUsers] = await Promise.all([
-    getServerSession(req, res),
-    getActiveUsersInRooms({ roomIds: documentIds }),
-  ]);
+    // Get session and active users
+    const [session, activeUsers] = await Promise.all([
+        getSession(req, res),
+        getActiveUsersInRooms({ roomIds: documentIds }),
+    ]);
 
-  // Check user is logged in
-  if (!session) {
-    return {
-      error: {
-        code: 401,
-        message: "Not signed in",
-        suggestion: "Sign in to access active users",
-      },
-    };
-  }
+    // Check user is logged in
+    if (!session) {
+        return {
+            error: {
+                code: 401,
+                message: "Not signed in",
+                suggestion: "Sign in to access active users",
+            },
+        };
+    }
 
-  // Check active users returned successfully
-  const { data, error } = activeUsers;
+    // Check active users returned successfully
+    const { data, error } = activeUsers;
 
-  if (error) {
-    return { error };
-  }
+    if (error) {
+        return { error };
+    }
 
-  // If you'd like to filter which data about users is sent, do so here
-  // Example - only name is sent as live user data:
-  // data.forEach(room => room.users = room.users.map(
-  //   (user: ActiveUser) => ({ name: user.info.name })
-  // ))
+    // If you'd like to filter which data about users is sent, do so here
+    // Example - only name is sent as live user data:
+    // data.forEach(room => room.users = room.users.map(
+    //   (user: ActiveUser) => ({ name: user.info.name })
+    // ))
 
-  return { data };
+    return { data };
 }

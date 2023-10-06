@@ -1,16 +1,16 @@
 import { GetServerSidePropsContext } from "next";
 import {
-  GetDocumentsProps,
-  GetDocumentsResponse,
-  RoomAccess,
-  RoomMetadata,
+    GetDocumentsProps,
+    GetDocumentsResponse,
+    RoomAccess,
+    RoomMetadata,
 } from "../../../types";
-import { getServerSession } from "../auth";
+import { getSession } from "../auth";
 import { getRooms } from "../liveblocks";
 import {
-  buildDocuments,
-  getDraftsGroupName,
-  userAllowedInRooms,
+    buildDocuments,
+    getDraftsGroupName,
+    userAllowedInRooms,
 } from "../utils";
 
 /**
@@ -27,88 +27,95 @@ import {
  * @param [limit] - Optional, the amount of documents to retrieve
  */
 export async function getDocuments(
-  req: GetServerSidePropsContext["req"],
-  res: GetServerSidePropsContext["res"],
-  { userId = "", groupIds = [], documentType, drafts, limit }: GetDocumentsProps
+    req: GetServerSidePropsContext["req"],
+    res: GetServerSidePropsContext["res"],
+    {
+        userId = "",
+        groupIds = [],
+        documentType,
+        drafts,
+        limit,
+    }: GetDocumentsProps
 ) {
-  // Build getRooms arguments
-  const metadata: RoomMetadata = {};
+    // Build getRooms arguments
+    const metadata: RoomMetadata = {};
 
-  if (documentType) {
-    metadata["type"] = documentType;
-  }
+    if (documentType) {
+        metadata["type"] = documentType;
+    }
 
-  let getRoomsOptions: Parameters<typeof getRooms>[0] = {
-    limit,
-    metadata,
-  };
-
-  const draftGroupName = getDraftsGroupName(userId);
-
-  if (drafts) {
-    // Drafts are stored as a group that uses the userId
-    getRoomsOptions = {
-      ...getRoomsOptions,
-      groupIds: [draftGroupName],
+    let getRoomsOptions: Parameters<typeof getRooms>[0] = {
+        limit,
+        metadata,
     };
-  } else {
-    // Not a draft, use other info
-    getRoomsOptions = {
-      ...getRoomsOptions,
-      groupIds: groupIds.filter((id) => id !== draftGroupName),
-      userId: userId,
+
+    const draftGroupName = getDraftsGroupName(userId);
+
+    if (drafts) {
+        // Drafts are stored as a group that uses the userId
+        getRoomsOptions = {
+            ...getRoomsOptions,
+            groupIds: [draftGroupName],
+        };
+    } else {
+        // Not a draft, use other info
+        getRoomsOptions = {
+            ...getRoomsOptions,
+            groupIds: groupIds.filter((id) => id !== draftGroupName),
+            userId: userId,
+        };
+    }
+
+    // Get session and rooms
+    const [session, rooms] = await Promise.all([
+        getSession(req, res),
+        getRooms(getRoomsOptions),
+    ]);
+
+    // Check user is logged in
+    if (!session) {
+        return {
+            error: {
+                code: 401,
+                message: "Not signed in",
+                suggestion: "Sign in to get documents",
+            },
+        };
+    }
+
+    // Call Liveblocks API and get rooms
+    const { data, error } = rooms;
+
+    if (error || !data) {
+        return { error };
+    }
+
+    // Check current logged-in user has access to each room
+    if (
+        !userAllowedInRooms({
+            accessesAllowed: [RoomAccess.RoomWrite, RoomAccess.RoomRead],
+            userId: session.user.info.id,
+            groupIds: groupIds,
+            rooms: data.data,
+        })
+    ) {
+        return {
+            error: {
+                code: 403,
+                message: "Not allowed access",
+                suggestion:
+                    "Check that you've been given permission to the document",
+            },
+        };
+    }
+
+    // Convert rooms to custom document format
+    const documents = buildDocuments(data.data ?? []);
+
+    const result: GetDocumentsResponse = {
+        documents: documents,
+        nextPage: data.nextPage,
     };
-  }
 
-  // Get session and rooms
-  const [session, rooms] = await Promise.all([
-    getServerSession(req, res),
-    getRooms(getRoomsOptions),
-  ]);
-
-  // Check user is logged in
-  if (!session) {
-    return {
-      error: {
-        code: 401,
-        message: "Not signed in",
-        suggestion: "Sign in to get documents",
-      },
-    };
-  }
-
-  // Call Liveblocks API and get rooms
-  const { data, error } = rooms;
-
-  if (error || !data) {
-    return { error };
-  }
-
-  // Check current logged-in user has access to each room
-  if (
-    !userAllowedInRooms({
-      accessesAllowed: [RoomAccess.RoomWrite, RoomAccess.RoomRead],
-      userId: session.user.info.id,
-      groupIds: groupIds,
-      rooms: data.data,
-    })
-  ) {
-    return {
-      error: {
-        code: 403,
-        message: "Not allowed access",
-        suggestion: "Check that you've been given permission to the document",
-      },
-    };
-  }
-
-  // Convert rooms to custom document format
-  const documents = buildDocuments(data.data ?? []);
-
-  const result: GetDocumentsResponse = {
-    documents: documents,
-    nextPage: data.nextPage,
-  };
-
-  return { data: result };
+    return { data: result };
 }

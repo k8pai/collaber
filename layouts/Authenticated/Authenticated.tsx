@@ -5,12 +5,12 @@ import { PropsWithChildren } from "react";
 type Props = PropsWithChildren<{ session: Session }>;
 
 export function AuthenticatedLayout({ children, session }: Props) {
-  const router = useRouter();
+    const router = useRouter();
 
-  // Redirect if not logged in
-  if (!session) {
-    router.replace("/");
-  }
+    // Redirect if not logged in
+    if (!session) {
+        router.replace("/");
+    }
 
-  return <>{children}</>;
+    return <>{children}</>;
 }
