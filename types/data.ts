@@ -2,15 +2,14 @@
  * These types are used in `/data`
  */
 
+import { Groups } from "@prisma/client";
+
 export type User = {
-  id: string;
-  name: string;
-  avatar?: string;
-  color: string;
-  groupIds: string[];
+    id: string;
+    name: string;
+    avatar?: string;
+    color: string;
+    groupIds: string[];
 };
 
-export type Group = {
-  id: string;
-  name: string;
-};
+export type Group = Groups;
